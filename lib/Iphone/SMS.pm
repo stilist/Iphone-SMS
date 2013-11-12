@@ -21,12 +21,13 @@ Version 0.01
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 
 =head1 SYNOPSIS
 
 Extract your sms in iphone from itunes backup files
+Be sure backup your iphone by itunes first
 
 Usage:
 
@@ -65,7 +66,12 @@ sub new {
         'Apple Computer',
         'MobileSync',
         'Backup'
-    );
+    ) unless $path;
+
+    if ( not -d $path ) {
+        print "directory [$path] not exists.\n";
+        exit;
+    }
 
     bless { backup_path => $path }, $class;
 }
