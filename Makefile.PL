@@ -5,6 +5,7 @@ WriteMakefile
   'NAME' => 'Iphone::SMS',
   'VERSION_FROM' => 'lib/Iphone/SMS.pm',
   'PREREQ_PM' => {
+                   'DBI' => '1.611',
                    'Test::More' => 0
                  },
   'INSTALLDIRS' => 'site',

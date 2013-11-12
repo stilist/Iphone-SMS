@@ -16,8 +16,7 @@ my $builder = Module::Build->new(
         'Test::More' => 0,
     },
     requires => {
-        #'ABC'              => 1.6,
-        #'Foo::Bar::Module' => 5.0401,
+        DBI                 => 1.611,
     },
     add_to_cleanup     => [ 'Iphone-SMS-*' ],
     create_makefile_pl => 'traditional',

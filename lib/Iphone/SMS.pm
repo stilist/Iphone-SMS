@@ -17,11 +17,11 @@ Iphone::SMS - extract sms from itunes backup files
 
 =head1 VERSION
 
-Version 0.01
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 
 =head1 SYNOPSIS
@@ -59,14 +59,17 @@ Usage:
 sub new {
     my ($class, $path) = @_;
 
-    $path = File::Spec->catdir(
-        $ENV{'HOME'},
-        $^O =~ m/darwin/i ? 'Library' : 'AppData',
-        'Roaming',
-        'Apple Computer',
-        'MobileSync',
-        'Backup'
-    ) unless $path;
+    if (not defined $path){
+        if ( $^O =~ /ms/i or $^O eq 'cygwin' ) {
+            $path = File::Spec->catdir(
+                $ENV{'HOME'}, 'AppData', 'Roaming','Apple Computer', 'MobileSync', 'Backup'
+            );
+        } elsif ( $^O =~ /darwin/i ) {
+            $path = File::Spec->catdir(
+                $ENV{'HOME'}, 'Library', 'Application Support', 'MobileSync', 'Backup'
+            );
+        }
+    }
 
     if ( not -d $path ) {
         print "directory [$path] not exists.\n";
@@ -80,7 +83,7 @@ sub new {
 
     get sms message
 
-    return [{ type => 'SMS', number => 'number', message => 'content', time => 'unixtime' }, ...]
+    return data: [{ type => 'SMS', number => 'number', message => 'content', time => 'unixtime' }, ...]
 
     usage: my $sms = $foo->get_sms()
 
