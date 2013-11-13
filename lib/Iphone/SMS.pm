@@ -6,9 +6,11 @@ use warnings FATAL => 'all';
 
 use DBI;
 
+use Config;
 use Cwd;
 use File::Spec qw();
 use File::Find;
+use File::Basename;
 use Fcntl qw(:DEFAULT :flock);
 
 =head1 NAME
@@ -17,16 +19,17 @@ Iphone::SMS - extract sms from itunes backup files
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 
 =head1 SYNOPSIS
 
 Extract your sms in iphone from itunes backup files
+
 Be sure backup your iphone by itunes first
 
 Usage:
@@ -42,6 +45,12 @@ Usage:
     my $foo = Iphone::SMS->new();
 
     it will search the itunes default backup path
+
+    on macos: $ENV{HOME}/Library/Application\ Support/MobileSync/Backup/
+
+    on windows vista/7/8: $ENV{HOME}\AppData\Roaming\Apple Computer\MobileSync\Backup\
+
+    on windows xp: \Documents and Settings\$USER\Application Data\Apple Computer\MobileSync\Backup\
 
     my $sms = $foo->get_sms()
 
@@ -59,19 +68,12 @@ Usage:
 sub new {
     my ($class, $path) = @_;
 
-    if (not defined $path){
-        if ( $^O =~ /ms/i or $^O eq 'cygwin' ) {
-            $path = File::Spec->catdir(
-                $ENV{'HOME'}, 'AppData', 'Roaming','Apple Computer', 'MobileSync', 'Backup'
-            );
-        } elsif ( $^O =~ /darwin/i ) {
-            $path = File::Spec->catdir(
-                $ENV{'HOME'}, 'Library', 'Application Support', 'MobileSync', 'Backup'
-            );
-        }
-    }
+    $path = _get_default_backup_path() unless $path;
 
-    if ( not -d $path ) {
+    if (not defined $path) {
+        print "can't find the default backup path. please give your itunes backup path\n";
+        exit;
+    } elsif ( not -d $path ) {
         print "directory [$path] not exists.\n";
         exit;
     }
@@ -94,10 +96,10 @@ sub get_sms {
     my $messages;
 
     find( { wanted => sub {
-                return unless file_is_sqlite($File::Find::name);
+                return unless _file_is_sqlite($File::Find::name);
                 ### $File::Find::name
-                return unless find_message_table($File::Find::name);
-                push @$messages, @{get_sms_message($File::Find::name)};
+                return unless _find_message_table($File::Find::name);
+                push @$messages, @{_get_sms_message($File::Find::name)};
             },
             follow => 1,
         },
@@ -121,12 +123,35 @@ sub get_sms {
     return \@sms;
 }
 
-sub file_is_sqlite {
+sub _get_default_backup_path {
+    my $path;
+
+    my $osname = $Config{osname};
+    my @windows = qw(Win7 Win8 WinVista);
+    if ( grep { $_ eq $osname } @windows ) {
+        $path = File::Spec->catdir(
+            $ENV{'HOME'}, 'AppData', 'Roaming','Apple Computer', 'MobileSync', 'Backup'
+        );
+    } elsif ( $osname eq 'darwin' ) {
+        $path = File::Spec->catdir(
+            $ENV{'HOME'}, 'Library', 'Application Support', 'MobileSync', 'Backup'
+        );
+    } elsif ( $osname eq 'WinXP' ) {
+        $path = File::Spec->catdir(
+           'Documents and Setting',  basename($ENV{'HOME'}), 'Application Data',
+           'Apple Computer', 'MobileSync', 'Backup'
+        );
+    }
+
+    return $path;
+}
+
+sub _file_is_sqlite {
     my $file = shift;
 
     # win seems can't open dir
     # and will give permission denied
-    return 0 if -d $file or -z $file;
+    return 0 if -d $file or -z _;
 
     sysopen my $fh, $file, O_RDONLY
         or die "can't open $file: $!";
@@ -143,7 +168,7 @@ sub file_is_sqlite {
     return $flag;
 }
 
-sub get_sms_message {
+sub _get_sms_message {
     my $dbfile = shift;
 
     my $dbh = DBI->connect("dbi:SQLite:dbname=$dbfile","","");
@@ -163,7 +188,7 @@ sub get_sms_message {
     return $data;
 }
 
-sub find_message_table {
+sub _find_message_table {
     my $dbfile = shift;
 
     my $dbh = DBI->connect("dbi:SQLite:dbname=$dbfile","","");

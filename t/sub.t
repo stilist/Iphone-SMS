@@ -6,6 +6,6 @@ use Test::More;
 
 plan tests => 1;
 
-use_ok( 'Iphone::SMS', 'get_sms' );
+use_ok( 'Iphone::SMS', qw(new get_sms) );
 diag( "Testing Iphone::SMS method call" );
 
